@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import qrcodeImage from './assets/qrcode_for_gh_a62d44f1585c_258.jpg'
 
 const API_URL = '/api/web'
 const INITIAL_VISIBLE_COUNT = 10
@@ -110,6 +111,8 @@ function openDetail(categoryId: number) {
   selectedId.value = categoryId
   expanded.value = false
   window.scrollTo({ top: 0, behavior: 'smooth' })
+  
+  history.pushState({ selectedId: categoryId }, '', `#detail-${categoryId}`)
 }
 
 function backToList() {
@@ -158,6 +161,15 @@ async function loadData() {
 
 onMounted(() => {
   void loadData()
+  
+  // 监听浏览器后退事件
+  window.addEventListener('popstate', (event) => {
+    if (event.state && event.state.selectedId) {
+      selectedId.value = event.state.selectedId
+    } else {
+      selectedId.value = null
+    }
+  })
 })
 </script>
 
@@ -215,12 +227,15 @@ onMounted(() => {
               </span>
             </button>
           </section>
+          
+          <section class="qrcode-section">
+            <img :src="qrcodeImage" class="qrcode-image" alt="二维码" />
+            <p class="qrcode-text">扫码关注公众号</p>
+          </section>
         </section>
 
         <section v-else class="detail-page">
           <header class="detail-header">
-            <button class="back-button" type="button" @click="backToList">返回</button>
-
             <div class="detail-heading">
               <h1 class="detail-title">{{ selectedCategory.name }}</h1>
               <p class="detail-impact" :class="toneClass(selectedCategory.estimatedImpact)">
@@ -264,3 +279,25 @@ onMounted(() => {
     </main>
   </div>
 </template>
+
+<style scoped>
+.qrcode-section {
+  padding: 2rem 1rem 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.qrcode-image {
+  width: 140px;
+  height: 140px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.qrcode-text {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #666;
+}
+</style>
