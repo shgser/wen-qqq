@@ -1,8 +1,8 @@
 const API_PREFIX = '/api/'
-const UPSTREAM_ORIGIN = 'https://js.345569.xyz'
-const ALLOWED_PATHS = new Set([
-  '/api/5gsilmu61dc8eae3',
+const PATH_MAP = new Map([
+  ['/api/web', '/5gsilmu61dc8eae3'],
 ])
+const ALLOWED_PATHS = new Set(PATH_MAP.keys())
 
 function jsonResponse(body, init = {}) {
   return new Response(JSON.stringify(body), {
@@ -15,8 +15,13 @@ function jsonResponse(body, init = {}) {
   })
 }
 
-async function handleApiRequest(request) {
+function resolveUpstreamOrigin(env) {
+  return env?.UPSTREAM_ORIGIN
+}
+
+async function handleApiRequest(request, env) {
   const url = new URL(request.url)
+  const upstreamOrigin = resolveUpstreamOrigin(env)
 
   if (!ALLOWED_PATHS.has(url.pathname)) {
     return jsonResponse(
@@ -28,7 +33,9 @@ async function handleApiRequest(request) {
     )
   }
 
-  const upstreamUrl = `${UPSTREAM_ORIGIN}${url.pathname.replace(/^\/api/, '')}${url.search}`
+  const upstreamPath = PATH_MAP.get(url.pathname) || url.pathname.replace(/^\/api/, '')
+  const upstreamUrl = `${upstreamOrigin}${upstreamPath}${url.search}`
+  console.log('Request path:', url.pathname, '→ Upstream URL:', upstreamUrl)
   const upstreamResponse = await fetch(upstreamUrl, {
     headers: {
       Accept: 'application/json',
@@ -59,11 +66,11 @@ async function handleApiRequest(request) {
 }
 
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
     const url = new URL(request.url)
 
     if (url.pathname.startsWith(API_PREFIX)) {
-      return handleApiRequest(request)
+      return handleApiRequest(request, env)
     }
 
     return fetch(request)
