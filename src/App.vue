@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 
-const API_URL = 'https://js.345569.xyz/5gsilmu61dc8eae3'
+const API_URL = '/api/5gsilmu61dc8eae3'
 const INITIAL_VISIBLE_COUNT = 10
 
 interface ApiIndex {
@@ -132,6 +132,14 @@ async function loadData() {
 
     if (!response.ok) {
       throw new Error(`接口请求失败：${response.status}`)
+    }
+
+    const contentType = response.headers.get('content-type') ?? ''
+
+    if (!contentType.includes('application/json')) {
+      const rawText = await response.text()
+      const preview = rawText.trim().slice(0, 60)
+      throw new Error(`接口未返回 JSON，当前返回：${preview || '空内容'}`)
     }
 
     const result = (await response.json()) as ApiResponse
