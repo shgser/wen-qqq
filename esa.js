@@ -1,7 +1,8 @@
 const API_PREFIX = '/api/'
+const TEST_PATH = '/_test'
 
 function getPathMap(env) {
-  const upstreamPath = env?.UPSTREAM_PATH
+  const upstreamPath = getUpstreamPath(env)
   return new Map([
     ['/api/web', upstreamPath],
   ])
@@ -140,6 +141,18 @@ export default {
       startsWithApi: url.pathname.startsWith(API_PREFIX),
       API_PREFIX,
     })
+
+    // 测试路由，确认 esa.js 是否被调用
+    if (url.pathname === TEST_PATH) {
+      return jsonResponse({
+        message: 'esa.js is working!',
+        env: {
+          UPSTREAM_ORIGIN: env?.UPSTREAM_ORIGIN ? 'set' : 'not set',
+          UPSTREAM_PATH: env?.UPSTREAM_PATH ? 'set' : 'not set',
+          processEnvKeys: Object.keys(process.env || {}),
+        },
+      })
+    }
 
     if (url.pathname.startsWith(API_PREFIX)) {
       console.log('Handling API request...')
