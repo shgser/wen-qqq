@@ -1,7 +1,7 @@
 const API_PREFIX = '/api/'
 
 function getPathMap(env) {
-  const upstreamPath = env?.UPSTREAM_PATH || '/5gsilmu61dc8eae3'
+  const upstreamPath = env?.UPSTREAM_PATH
   return new Map([
     ['/api/web', upstreamPath],
   ])
@@ -33,10 +33,18 @@ async function handleApiRequest(request, env) {
   const pathMap = getPathMap(env)
   const allowedPaths = getAllowedPaths(env)
 
+  // 调试信息
+  console.log('Environment variables:', {
+    UPSTREAM_ORIGIN: env?.UPSTREAM_ORIGIN ? 'set' : 'not set',
+    UPSTREAM_PATH: env?.UPSTREAM_PATH ? 'set' : 'not set',
+    envKeys: env ? Object.keys(env) : [],
+  })
+
   if (!upstreamOrigin) {
     return jsonResponse(
       {
         message: 'UPSTREAM_ORIGIN environment variable not configured',
+        availableEnvKeys: env ? Object.keys(env) : [],
       },
       { status: 500 },
     )
