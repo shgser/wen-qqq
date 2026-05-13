@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 
-const API_URL = '/api/5gsilmu61dc8eae3'
+const API_URL = 'https://js.345569.xyz/5gsilmu61dc8eae3'
 const INITIAL_VISIBLE_COUNT = 10
 
 interface ApiIndex {
