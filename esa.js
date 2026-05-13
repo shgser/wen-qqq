@@ -133,11 +133,20 @@ async function handleApiRequest(request, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url)
+    
+    console.log('Request received:', {
+      url: request.url,
+      pathname: url.pathname,
+      startsWithApi: url.pathname.startsWith(API_PREFIX),
+      API_PREFIX,
+    })
 
     if (url.pathname.startsWith(API_PREFIX)) {
+      console.log('Handling API request...')
       return handleApiRequest(request, env)
     }
 
+    console.log('Falling back to static assets...')
     return fetch(request)
   },
 }
