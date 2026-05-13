@@ -11,7 +11,7 @@ function jsonResponse(body, init = {}) {
   })
 }
 
-async function handleRequest(request) {
+async function handleRequest(request, env) {
   const url = new URL(request.url)
   
   console.log('Request received:', {
@@ -23,6 +23,10 @@ async function handleRequest(request) {
     return jsonResponse({
       message: 'esa.js is working!',
       test: true,
+      envKeys: env ? Object.keys(env) : [],
+      processEnvKeys: Object.keys(typeof process !== 'undefined' ? process.env || {} : {}),
+      hasEnv: !!env,
+      hasProcessEnv: typeof process !== 'undefined' && !!process.env,
     })
   }
 
@@ -37,7 +41,7 @@ async function handleRequest(request) {
 }
 
 export default {
-  fetch(request) {
-    return handleRequest(request)
+  fetch(request, env) {
+    return handleRequest(request, env)
   },
 }
