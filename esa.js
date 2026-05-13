@@ -24,7 +24,25 @@ function jsonResponse(body, init = {}) {
 }
 
 function resolveUpstreamOrigin(env) {
-  return env?.UPSTREAM_ORIGIN
+  // 尝试从 env 或 process.env 获取
+  return env?.UPSTREAM_ORIGIN || process.env?.UPSTREAM_ORIGIN
+}
+
+function getUpstreamPath(env) {
+  // 尝试从 env 或 process.env 获取
+  return env?.UPSTREAM_PATH || process.env?.UPSTREAM_PATH
+}
+
+function getPathMap(env) {
+  const upstreamPath = getUpstreamPath(env)
+  return new Map([
+    ['/api/web', upstreamPath],
+  ])
+}
+
+function getAllowedPaths(env) {
+  const pathMap = getPathMap(env)
+  return new Set(pathMap.keys())
 }
 
 async function handleApiRequest(request, env) {
@@ -35,9 +53,16 @@ async function handleApiRequest(request, env) {
 
   // 调试信息
   console.log('Environment variables:', {
-    UPSTREAM_ORIGIN: env?.UPSTREAM_ORIGIN ? 'set' : 'not set',
-    UPSTREAM_PATH: env?.UPSTREAM_PATH ? 'set' : 'not set',
-    envKeys: env ? Object.keys(env) : [],
+    fromEnv: {
+      UPSTREAM_ORIGIN: env?.UPSTREAM_ORIGIN ? 'set' : 'not set',
+      UPSTREAM_PATH: env?.UPSTREAM_PATH ? 'set' : 'not set',
+      envKeys: env ? Object.keys(env) : [],
+    },
+    fromProcessEnv: {
+      UPSTREAM_ORIGIN: process.env?.UPSTREAM_ORIGIN ? 'set' : 'not set',
+      UPSTREAM_PATH: process.env?.UPSTREAM_PATH ? 'set' : 'not set',
+      processEnvKeys: Object.keys(process.env || {}),
+    },
   })
 
   if (!upstreamOrigin) {
@@ -45,6 +70,7 @@ async function handleApiRequest(request, env) {
       {
         message: 'UPSTREAM_ORIGIN environment variable not configured',
         availableEnvKeys: env ? Object.keys(env) : [],
+        processEnvKeys: Object.keys(process.env || {}),
       },
       { status: 500 },
     )
