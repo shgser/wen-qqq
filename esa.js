@@ -1,8 +1,16 @@
 const API_PREFIX = '/api/'
-const PATH_MAP = new Map([
-  ['/api/web', '/5gsilmu61dc8eae3'],
-])
-const ALLOWED_PATHS = new Set(PATH_MAP.keys())
+
+function getPathMap(env) {
+  const upstreamPath = env?.UPSTREAM_PATH || '/5gsilmu61dc8eae3'
+  return new Map([
+    ['/api/web', upstreamPath],
+  ])
+}
+
+function getAllowedPaths(env) {
+  const pathMap = getPathMap(env)
+  return new Set(pathMap.keys())
+}
 
 function jsonResponse(body, init = {}) {
   return new Response(JSON.stringify(body), {
@@ -22,6 +30,8 @@ function resolveUpstreamOrigin(env) {
 async function handleApiRequest(request, env) {
   const url = new URL(request.url)
   const upstreamOrigin = resolveUpstreamOrigin(env)
+  const pathMap = getPathMap(env)
+  const allowedPaths = getAllowedPaths(env)
 
   if (!upstreamOrigin) {
     return jsonResponse(
@@ -32,7 +42,7 @@ async function handleApiRequest(request, env) {
     )
   }
 
-  if (!ALLOWED_PATHS.has(url.pathname)) {
+  if (!allowedPaths.has(url.pathname)) {
     return jsonResponse(
       {
         message: 'API route not found',
@@ -42,7 +52,7 @@ async function handleApiRequest(request, env) {
     )
   }
 
-  const upstreamPath = PATH_MAP.get(url.pathname) || url.pathname.replace(/^\/api/, '')
+  const upstreamPath = pathMap.get(url.pathname) || url.pathname.replace(/^\/api/, '')
   const upstreamUrl = `${upstreamOrigin}${upstreamPath}${url.search}`
   console.log('Request path:', url.pathname, '→ Upstream URL:', upstreamUrl)
   
