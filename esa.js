@@ -23,6 +23,15 @@ async function handleApiRequest(request, env) {
   const url = new URL(request.url)
   const upstreamOrigin = resolveUpstreamOrigin(env)
 
+  if (!upstreamOrigin) {
+    return jsonResponse(
+      {
+        message: 'UPSTREAM_ORIGIN environment variable not configured',
+      },
+      { status: 500 },
+    )
+  }
+
   if (!ALLOWED_PATHS.has(url.pathname)) {
     return jsonResponse(
       {
@@ -36,33 +45,45 @@ async function handleApiRequest(request, env) {
   const upstreamPath = PATH_MAP.get(url.pathname) || url.pathname.replace(/^\/api/, '')
   const upstreamUrl = `${upstreamOrigin}${upstreamPath}${url.search}`
   console.log('Request path:', url.pathname, '→ Upstream URL:', upstreamUrl)
-  const upstreamResponse = await fetch(upstreamUrl, {
-    headers: {
-      Accept: 'application/json',
-    },
-  })
-
-  if (!upstreamResponse.ok) {
-    const errorText = await upstreamResponse.text()
-
-    return new Response(errorText || 'Upstream request failed', {
-      status: upstreamResponse.status,
+  
+  try {
+    const upstreamResponse = await fetch(upstreamUrl, {
       headers: {
-        'content-type': upstreamResponse.headers.get('content-type') || 'text/plain; charset=utf-8',
-        'cache-control': 'no-store',
+        Accept: 'application/json',
       },
     })
+
+    if (!upstreamResponse.ok) {
+      const errorText = await upstreamResponse.text()
+
+      return new Response(errorText || 'Upstream request failed', {
+        status: upstreamResponse.status,
+        headers: {
+          'content-type': upstreamResponse.headers.get('content-type') || 'text/plain; charset=utf-8',
+          'cache-control': 'no-store',
+        },
+      })
+    }
+
+    const payload = await upstreamResponse.text()
+
+    return new Response(payload, {
+      status: upstreamResponse.status,
+      headers: {
+        'content-type': 'application/json; charset=utf-8',
+        'cache-control': upstreamResponse.headers.get('cache-control') || 'max-age=10',
+      },
+    })
+  } catch (error) {
+    console.error('Upstream fetch error:', error)
+    return jsonResponse(
+      {
+        message: 'Upstream request failed',
+        error: error.message,
+      },
+      { status: 502 },
+    )
   }
-
-  const payload = await upstreamResponse.text()
-
-  return new Response(payload, {
-    status: upstreamResponse.status,
-    headers: {
-      'content-type': 'application/json; charset=utf-8',
-      'cache-control': upstreamResponse.headers.get('cache-control') || 'max-age=10',
-    },
-  })
 }
 
 export default {
