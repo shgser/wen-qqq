@@ -206,7 +206,7 @@ onMounted(() => {
             <p class="summary-note">
               <span v-if="description">基于年报、季报持仓计算</span>
               <span v-if="timestamp" class="summary-time">更新于 {{ timestamp }}</span>
-              <span v-if="data.hiddenOvernight">, 仅供参考</span>
+              <span>, 仅供参考</span>
             </p>
           </header>
 
