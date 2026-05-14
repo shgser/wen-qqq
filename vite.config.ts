@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
   const upstreamPath = env.VITE_UPSTREAM_PATH
 
   const PATH_MAP: Record<string, string> = {
-    '/api/web': upstreamPath,
+    '/api/web1': upstreamPath,
   }
 
   return {

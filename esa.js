@@ -6,7 +6,7 @@ const CONFIG = {
 }
 
 const PATH_MAP = new Map([
-  ['/api/web', CONFIG.UPSTREAM_PATH],
+  ['/api/web1', CONFIG.UPSTREAM_PATH],
 ])
 const ALLOWED_PATHS = new Set(PATH_MAP.keys())
 

@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import qrcodeImage from './assets/qrcode_for_gh_a62d44f1585c_258.jpg'
 
-const API_URL = '/api/web'
+const API_URL = '/api/web1'
 const INITIAL_VISIBLE_COUNT = 10
 
 interface ApiIndex {
@@ -42,6 +42,7 @@ let timerId: ReturnType<typeof setInterval> | null = null
 
 const indexes = computed(() => data.value?.indexs ?? [])
 const categories = computed(() => data.value?.categoryImpacts ?? [])
+const hiddenOvernight = computed(() => data.value?.hiddenOvernight ?? false)
 const description = computed(() => data.value?.description?.trim() ?? '')
 const timestamp = computed(() => data.value?.timestamp?.trim() ?? '')
 
