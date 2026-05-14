@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import qrcodeImage from './assets/qrcode_for_gh_a62d44f1585c_258.jpg'
 
 const API_URL = '/api/web'
@@ -38,6 +38,7 @@ const loading = ref(true)
 const error = ref('')
 const selectedId = ref<number | null>(null)
 const expanded = ref(false)
+let timerId: ReturnType<typeof setInterval> | null = null
 
 const indexes = computed(() => data.value?.indexs ?? [])
 const categories = computed(() => data.value?.categoryImpacts ?? [])
@@ -121,8 +122,10 @@ function backToList() {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-async function loadData() {
-  loading.value = true
+async function loadData(showLoading = false) {
+  if (showLoading) {
+    loading.value = true
+  }
   error.value = ''
 
   try {
@@ -155,12 +158,14 @@ async function loadData() {
   } catch (err) {
     error.value = err instanceof Error ? err.message : '加载数据失败'
   } finally {
-    loading.value = false
+    if (showLoading) {
+      loading.value = false
+    }
   }
 }
 
 onMounted(() => {
-  void loadData()
+  void loadData(true)
   
   // 监听浏览器后退事件
   window.addEventListener('popstate', (event) => {
@@ -170,6 +175,21 @@ onMounted(() => {
       selectedId.value = null
     }
   })
+
+  // 启动定时刷新：每分钟的第10秒和第20秒刷新数据
+  timerId = setInterval(() => {
+    const seconds = new Date().getSeconds()
+    if (seconds === 10 || seconds === 20) {
+      void loadData(false)
+    }
+  }, 1000)
+})
+
+onUnmounted(() => {
+  if (timerId !== null) {
+    clearInterval(timerId)
+    timerId = null
+  }
 })
 </script>
 
@@ -184,7 +204,7 @@ onMounted(() => {
       <section v-else-if="error" class="state-card">
         <p class="state-title">数据加载失败</p>
         <p class="state-text">{{ error }}</p>
-        <button class="retry-button" type="button" @click="loadData">重新加载</button>
+        <button class="retry-button" type="button" @click="loadData(true)">重新加载</button>
       </section>
 
       <template v-else-if="data">
@@ -229,7 +249,10 @@ onMounted(() => {
           </section>
           
           <section class="qrcode-section">
-            <img :src="qrcodeImage" class="qrcode-image" alt="二维码" />
+            <div class="qrcode-wrapper">
+              <img :src="qrcodeImage" class="qrcode-image" alt="二维码" />
+              <a v-show="!hiddenOvernight" href="http://web1.345569.xyz/" rel="noopener noreferrer" class="visit-link">美股24h</a>
+            </div>
             <p class="qrcode-text">扫码关注公众号</p>
           </section>
         </section>
@@ -282,10 +305,17 @@ onMounted(() => {
 
 <style scoped>
 .qrcode-section {
-  padding: 2rem 1rem 3rem;
+  padding: 2rem 10px;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  align-items: center;
+}
+
+.qrcode-wrapper {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
 }
 
 .qrcode-image {
@@ -295,9 +325,24 @@ onMounted(() => {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+.visit-link {
+  color: #667eea;
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.visit-link:hover {
+  color: #764ba2;
+  text-decoration: underline;
+}
+
 .qrcode-text {
+  width: 100%;
   margin: 0;
   font-size: 0.875rem;
   color: #666;
+  text-align: left;
 }
 </style>
