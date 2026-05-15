@@ -2,9 +2,105 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title></title>
+    <script>
+      (function() {
+        function detectDevTools() {
+          let detected = false
+          
+          // 检测方法1: 时间差
+          const start = performance.now()
+          debugger
+          const end = performance.now()
+          if (end - start > 100) {
+            detected = true
+          }
+          
+          // 检测方法2: console.log
+          if (!detected) {
+            const div = document.createElement('div')
+            Object.defineProperty(div, 'id', {
+              get: function() {
+                detected = true
+                return 'devtools-detected'
+              }
+            })
+            console.log(div)
+            console.clear()
+          }
+          
+          // 检测方法3: toString
+          if (!detected) {
+            const originalToString = Function.prototype.toString
+            Function.prototype.toString = function() {
+              if (this === console.log) {
+                detected = true
+              }
+              return originalToString.apply(this, arguments)
+            }
+            console.log('')
+            Function.prototype.toString = originalToString
+          }
+          
+          return detected
+        }
+        
+        if (detectDevTools()) {
+          // 控制台已打开，阻止所有资源加载
+          document.write = function() {}
+          
+          // 阻止后续脚本执行
+          const originalCreateElement = document.createElement
+          document.createElement = function(tag) {
+            if (tag.toLowerCase() === 'script' || tag.toLowerCase() === 'link') {
+              return {
+                setAttribute: function() {},
+                appendChild: function() {},
+                insertBefore: function() {},
+                addEventListener: function() {},
+                style: {},
+                onload: null,
+                onerror: null,
+                src: '',
+                href: '',
+                type: '',
+                rel: ''
+              }
+            }
+            return originalCreateElement.apply(document, arguments)
+          }
+          
+          // 阻止 fetch
+          window.fetch = function() {
+            return Promise.reject(new Error('Blocked'))
+          }
+          
+          // 阻止 XMLHttpRequest
+          window.XMLHttpRequest = function() {
+            return {
+              open: function() {},
+              send: function() {},
+              setRequestHeader: function() {},
+              addEventListener: function() {},
+              onreadystatechange: null,
+              readyState: 4,
+              status: 0,
+              responseText: '',
+              response: ''
+            }
+          }
+          
+          // 清空页面
+          document.body.innerHTML = ''
+          document.head.innerHTML = ''
+          
+          // 停止执行
+          throw new Error('DevTools detected')
+        }
+      })()
+    </script>
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
   </head>
   <body>
     <div id="app"></div>

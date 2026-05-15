@@ -6,7 +6,7 @@ const CONFIG = {
 }
 
 const PATH_MAP = new Map([
-  ['/api/qwaszxerdfcv', CONFIG.UPSTREAM_PATH],
+  [atob('L2FwaS9sa2poZ2Zkc2E='), CONFIG.UPSTREAM_PATH],
 ])
 const ALLOWED_PATHS = new Set(PATH_MAP.keys())
 

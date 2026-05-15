@@ -3,7 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import qrcodeImage from './assets/qrcode_for_gh_a62d44f1585c_258.jpg'
 import { protectCriticalData, registerCriticalFunction } from './anti-debug'
 
-const API_URL = '/api/qwaszxerdfcv'
+const AL = atob('L2FwaS9sa2poZ2Zkc2E=')
 const INITIAL_VISIBLE_COUNT = 10
 
 interface ApiIndex {
@@ -131,7 +131,7 @@ async function loadData(showLoading = false) {
   error.value = ''
 
   try {
-    const response = await fetch(API_URL, {
+    const response = await fetch(AL, {
       cache: 'no-store',
       headers: {
         Accept: 'application/json',

@@ -195,10 +195,29 @@ function disableRightClick() {
   })
 }
 
+function blockNetworkRequests() {
+  const originalFetch = window.fetch
+  const originalXHR = XMLHttpRequest.prototype.open
+  const originalXHRSend = XMLHttpRequest.prototype.send
+
+  window.fetch = function() {
+    return Promise.reject(new Error('Network requests blocked'))
+  }
+
+  XMLHttpRequest.prototype.open = function() {
+    throw new Error('Network requests blocked')
+  }
+
+  XMLHttpRequest.prototype.send = function() {
+    throw new Error('Network requests blocked')
+  }
+}
+
 function startMonitoring() {
   setInterval(function() {
     if (isDevToolsOpen()) {
       destroyCriticalData()
+      blockNetworkRequests()
       blockLogic()
     }
   }, 1000)
@@ -211,5 +230,13 @@ export function initAntiDebug() {
   disableRightClick()
   infiniteDebugger()
   randomDebugger()
+  
+  // 立即检测控制台是否已打开
+  if (isDevToolsOpen()) {
+    destroyCriticalData()
+    blockNetworkRequests()
+    blockLogic()
+  }
+  
   startMonitoring()
 }
