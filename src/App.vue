@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import qrcodeImage from './assets/qrcode_for_gh_a62d44f1585c_258.jpg'
+import { protectCriticalData, registerCriticalFunction } from './anti-debug'
 
-const API_URL = '/api/web1'
+const API_URL = '/api/qwaszxerdfcv'
 const INITIAL_VISIBLE_COUNT = 10
 
 interface ApiIndex {
@@ -165,7 +166,17 @@ async function loadData(showLoading = false) {
   }
 }
 
+watch(data, (newData) => {
+  if (newData) {
+    protectCriticalData(newData)
+  }
+})
+
 onMounted(() => {
+  registerCriticalFunction('loadData', loadData)
+  registerCriticalFunction('openDetail', openDetail)
+  registerCriticalFunction('backToList', backToList)
+  
   void loadData(true)
   
   // 监听浏览器后退事件
