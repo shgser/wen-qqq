@@ -6,6 +6,21 @@ import { protectCriticalData, registerCriticalFunction } from './anti-debug'
 const AL = atob('L2FwaS9sa2poZ2Zkc2E=')
 const INITIAL_VISIBLE_COUNT = 10
 
+const _K = new TextEncoder().encode(atob('ZXNhLXhvci1jaXBoZXItMjAyNA=='))
+
+function _d(b64: string) {
+  const raw = atob(b64)
+  const bytes = new Uint8Array(raw.length)
+  for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i)
+  const iv = bytes.slice(0, 8)
+  const enc = bytes.slice(8)
+  const out = new Uint8Array(enc.length)
+  for (let i = 0; i < enc.length; i++) {
+    out[i] = enc[i] ^ _K[(i + iv[i % 8]) % _K.length]
+  }
+  return new TextDecoder().decode(out)
+}
+
 interface ApiIndex {
   inxnm: string
   rise_fall_per: string
@@ -150,7 +165,15 @@ async function loadData(showLoading = false) {
       throw new Error(`接口未返回 JSON，当前返回：${preview || '空内容'}`)
     }
 
-    const result = (await response.json()) as ApiResponse
+    const raw = (await response.json()) as any
+
+    let result: ApiResponse
+    if (raw?.encrypted && typeof raw.data === 'string') {
+      const decrypted = _d(raw.data)
+      result = JSON.parse(decrypted) as ApiResponse
+    } else {
+      result = raw as ApiResponse
+    }
 
     if (!result?.categoryImpacts?.length) {
       throw new Error('接口返回数据为空')

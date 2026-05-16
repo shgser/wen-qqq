@@ -5,6 +5,22 @@ const CONFIG = {
   UPSTREAM_PATH: '/5gsilmu61dc8eae3',
 }
 
+const _K = new TextEncoder().encode(atob('ZXNhLXhvci1jaXBoZXItMjAyNA=='))
+
+function _e(text) {
+  const tb = new TextEncoder().encode(text)
+  const iv = new Uint8Array(8)
+  for (let i = 0; i < 8; i++) iv[i] = (Math.random() * 256) | 0
+  const out = new Uint8Array(8 + tb.length)
+  out.set(iv)
+  for (let i = 0; i < tb.length; i++) {
+    out[8 + i] = tb[i] ^ _K[(i + iv[i % 8]) % _K.length]
+  }
+  let s = ''
+  for (let i = 0; i < out.length; i++) s += String.fromCharCode(out[i])
+  return btoa(s)
+}
+
 const PATH_MAP = new Map([
   [atob('L2FwaS9sa2poZ2Zkc2E='), CONFIG.UPSTREAM_PATH],
 ])
@@ -58,13 +74,16 @@ async function handleApiRequest(request) {
     }
 
     const payload = await upstreamResponse.text()
-    return new Response(payload, {
-      status: upstreamResponse.status,
-      headers: {
-        'content-type': 'application/json; charset=utf-8',
-        'cache-control': upstreamResponse.headers.get('cache-control') || 'max-age=10',
+    const encrypted = _e(payload)
+    return jsonResponse(
+      { encrypted: true, data: encrypted },
+      {
+        status: upstreamResponse.status,
+        headers: {
+          'cache-control': upstreamResponse.headers.get('cache-control') || 'max-age=10',
+        },
       },
-    })
+    )
   } catch (error) {
     console.error('Upstream fetch error:', error)
     return jsonResponse(
