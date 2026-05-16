@@ -1,3 +1,5 @@
+import { KEY_B64 } from './crypto-key.js'
+
 const API_PREFIX = '/api/'
 
 const CONFIG = {
@@ -5,7 +7,7 @@ const CONFIG = {
   UPSTREAM_PATH: '/5gsilmu61dc8eae3',
 }
 
-const _K = new TextEncoder().encode(atob('ZXNhLXhvci1jaXBoZXItMjAyNA=='))
+const _K = new TextEncoder().encode(atob(KEY_B64))
 
 function _e(text) {
   const tb = new TextEncoder().encode(text)

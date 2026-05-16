@@ -3,6 +3,7 @@ import vue from '@vitejs/plugin-vue'
 import JavaScriptObfuscator from 'javascript-obfuscator'
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { KEY_B64 } from './crypto-key.js'
 
 const VIRTUAL_MODULE_ID = 'virtual:wasm-inline'
 const RESOLVED_ID = '\0' + VIRTUAL_MODULE_ID
@@ -26,7 +27,7 @@ function wasmInlinePlugin(): Plugin {
   }
 }
 
-const _K = new TextEncoder().encode(atob('ZXNhLXhvci1jaXBoZXItMjAyNA=='))
+const _K = new TextEncoder().encode(atob(KEY_B64))
 
 function _e(text: string) {
   const tb = new TextEncoder().encode(text)

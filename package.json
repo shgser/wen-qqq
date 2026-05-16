@@ -4,8 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build:wasm": "asc assembly/index.ts -o wasm/decrypt.wasm --runtime stub --initialMemory 4 --noAssert",
+    "dev": "node scripts/build-wasm.mjs && vite",
+    "build:wasm": "node scripts/build-wasm.mjs",
     "build": "npm run build:wasm && vite build",
     "preview": "vite preview"
   },

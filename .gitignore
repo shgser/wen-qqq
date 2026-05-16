@@ -13,6 +13,8 @@ dist-ssr
 
 public/decrypt.wasm
 wasm/decrypt.wasm
+crypto-key.js
+assembly/index.ts
 
 # Environment variables
 .env
