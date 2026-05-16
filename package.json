@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build:wasm": "asc assembly/index.ts -o wasm/decrypt.wasm --runtime stub --initialMemory 4 --noAssert",
+    "build": "npm run build:wasm && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -16,6 +17,7 @@
     "@types/node": "^25.7.0",
     "@vitejs/plugin-vue": "^6.0.1",
     "@vue/tsconfig": "^0.8.0",
+    "assemblyscript": "^0.28.17",
     "javascript-obfuscator": "^5.4.2",
     "typescript": "~5.8.3",
     "vite": "^7.1.2",

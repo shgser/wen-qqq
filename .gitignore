@@ -11,6 +11,9 @@ node_modules
 dist
 dist-ssr
 
+public/decrypt.wasm
+wasm/decrypt.wasm
+
 # Environment variables
 .env
 .env.local

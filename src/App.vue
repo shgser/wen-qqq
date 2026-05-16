@@ -2,23 +2,45 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import qrcodeImage from './assets/qrcode_for_gh_a62d44f1585c_258.jpg'
 import { protectCriticalData, registerCriticalFunction } from './anti-debug'
+import wasmBase64 from 'virtual:wasm-inline'
 
 const AL = atob('L2FwaS9sa2poZ2Zkc2E=')
 const INITIAL_VISIBLE_COUNT = 10
 
-const _K = new TextEncoder().encode(atob('ZXNhLXhvci1jaXBoZXItMjAyNA=='))
+interface WasmExports {
+  init(): void
+  decrypt(len: number): number
+  getInputPtr(): number
+  getOutputPtr(): number
+  memory: WebAssembly.Memory
+}
 
-function _d(b64: string) {
+let wasmExports: WasmExports | null = null
+
+async function initWasm() {
+  const binary = atob(wasmBase64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+  const { instance } = await WebAssembly.instantiate(bytes.buffer)
+  const exports = instance.exports as unknown as WasmExports
+  exports.init()
+  wasmExports = exports
+}
+
+function wasmDecrypt(b64: string): string {
   const raw = atob(b64)
-  const bytes = new Uint8Array(raw.length)
-  for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i)
-  const iv = bytes.slice(0, 8)
-  const enc = bytes.slice(8)
-  const out = new Uint8Array(enc.length)
-  for (let i = 0; i < enc.length; i++) {
-    out[i] = enc[i] ^ _K[(i + iv[i % 8]) % _K.length]
-  }
-  return new TextDecoder().decode(out)
+  const inputBytes = new Uint8Array(raw.length)
+  for (let i = 0; i < raw.length; i++) inputBytes[i] = raw.charCodeAt(i)
+
+  const exp = wasmExports!
+  const memView = new Uint8Array(exp.memory.buffer)
+  const inputPtr = exp.getInputPtr()
+  const outputPtr = exp.getOutputPtr()
+
+  memView.set(inputBytes, inputPtr)
+  const decLen = exp.decrypt(inputBytes.length)
+  const decrypted = new TextDecoder().decode(memView.slice(outputPtr, outputPtr + decLen))
+  return decrypted
 }
 
 interface ApiIndex {
@@ -169,7 +191,7 @@ async function loadData(showLoading = false) {
 
     let result: ApiResponse
     if (raw?.encrypted && typeof raw.data === 'string') {
-      const decrypted = _d(raw.data)
+      const decrypted = wasmDecrypt(raw.data)
       result = JSON.parse(decrypted) as ApiResponse
     } else {
       result = raw as ApiResponse
@@ -195,11 +217,12 @@ watch(data, (newData) => {
   }
 })
 
-onMounted(() => {
+onMounted(async () => {
   registerCriticalFunction('loadData', loadData)
   registerCriticalFunction('openDetail', openDetail)
   registerCriticalFunction('backToList', backToList)
   
+  await initWasm()
   void loadData(true)
   
   // 监听浏览器后退事件

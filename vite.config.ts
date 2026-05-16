@@ -1,8 +1,30 @@
 import { defineConfig, loadEnv, type Plugin } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import JavaScriptObfuscator from 'javascript-obfuscator'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { resolve } from 'node:path'
+
+const VIRTUAL_MODULE_ID = 'virtual:wasm-inline'
+const RESOLVED_ID = '\0' + VIRTUAL_MODULE_ID
+
+function wasmInlinePlugin(): Plugin {
+  return {
+    name: 'wasm-inline',
+    resolveId(id) {
+      if (id === VIRTUAL_MODULE_ID) return RESOLVED_ID
+    },
+    load(id) {
+      if (id !== RESOLVED_ID) return null
+      const wasmPath = resolve(process.cwd(), 'wasm/decrypt.wasm')
+      if (!existsSync(wasmPath)) {
+        throw new Error('decrypt.wasm not found. Run "npm run build:wasm" first.')
+      }
+      const buf = readFileSync(wasmPath)
+      const b64 = buf.toString('base64')
+      return `export default "${b64}"`
+    },
+  }
+}
 
 const _K = new TextEncoder().encode(atob('ZXNhLXhvci1jaXBoZXItMjAyNA=='))
 
@@ -101,6 +123,6 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
-    plugins: [vue(), encryptApiPlugin(upstreamOrigin, PATH_MAP), obfuscatorPlugin()],
+    plugins: [vue(), wasmInlinePlugin(), encryptApiPlugin(upstreamOrigin, PATH_MAP), obfuscatorPlugin()],
   }
 })
