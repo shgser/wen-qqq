@@ -218,7 +218,7 @@ async function loadData(showLoading = false) {
 
     let result: ApiResponse
     if (raw?.encrypted && typeof raw.data === 'string') {
-      const decrypted = wasmDecrypt(raw.data)
+      const decrypted = wasmDecrypt(raw.data.substring(0, raw.data.length - 1))
       result = JSON.parse(decrypted) as ApiResponse
     } else {
       result = raw as ApiResponse

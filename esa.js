@@ -132,7 +132,7 @@ async function handleApiRequest(request) {
     const encrypted = _e(ndata)
     // const encrypted = _e(payload)
     return jsonResponse(
-      { encrypted: true, data: encrypted },
+      { encrypted: true, data: encrypted+'a' },
       {
         status: upstreamResponse.status,
         headers: {
