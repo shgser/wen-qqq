@@ -43,6 +43,46 @@ function _e(text: string) {
   return btoa(s)
 }
 
+const TOKEN_SECRET = new TextEncoder().encode(atob(KEY_B64).slice(0, 32))
+const TOKEN_LEEWAY_SECONDS = 60
+
+async function importKey(raw: Uint8Array) {
+  return crypto.subtle.importKey(
+    'raw',
+    raw,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign', 'verify'],
+  )
+}
+
+async function signToken(headerB64: string, payloadB64: string) {
+  const key = await importKey(TOKEN_SECRET)
+  const data = new TextEncoder().encode(`${headerB64}.${payloadB64}`)
+  const sig = await crypto.subtle.sign('HMAC', key, data)
+  return btoa(String.fromCharCode(...new Uint8Array(sig))).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_')
+}
+
+async function verifyToken(token: string) {
+  const parts = token.split('.')
+  if (parts.length !== 3) return false
+  const [headerB64, payloadB64, signatureB64] = parts
+
+  const expectedSig = await signToken(headerB64, payloadB64)
+  if (signatureB64 !== expectedSig) return false
+
+  try {
+    const payloadJson = atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/'))
+    const payload = JSON.parse(payloadJson)
+    const now = Math.floor(Date.now() / 1000)
+    if (payload.exp && payload.exp < now - TOKEN_LEEWAY_SECONDS) return false
+    if (payload.nbf && payload.nbf > now + TOKEN_LEEWAY_SECONDS) return false
+    return true
+  } catch {
+    return false
+  }
+}
+
 function obfuscatorPlugin(): Plugin {
   return {
     name: 'obfuscator',
@@ -82,6 +122,17 @@ function encryptApiPlugin(upstreamOrigin: string, pathMap: Record<string, string
       server.middlewares.use(async (req, res, next) => {
         if (!req.url?.startsWith('/api/')) {
           return next()
+        }
+
+        const authHeader = (req.headers['authorization'] as string) || ''
+        const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
+        const isValid = await verifyToken(token)
+        if (!isValid) {
+          res.statusCode = 401
+          res.setHeader('content-type', 'application/json; charset=utf-8')
+          res.setHeader('cache-control', 'no-store')
+          res.end(JSON.stringify({ message: 'Unauthorized: invalid or expired token' }))
+          return
         }
 
         const upstreamPath = pathMap[req.url]

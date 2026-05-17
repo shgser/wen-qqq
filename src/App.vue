@@ -7,6 +7,31 @@ import wasmBase64 from 'virtual:wasm-inline'
 const AL = atob('L2FwaS9sa2poZ2Zkc2E=')
 const INITIAL_VISIBLE_COUNT = 10
 
+const TOKEN_SECRET = new TextEncoder().encode(atob('TVhLaExYaHZjdDFqelhCcVNYSXRLakF5TkE9PQ==').slice(0, 32))
+
+async function importKey(raw: Uint8Array) {
+  return crypto.subtle.importKey(
+    'raw',
+    raw,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  )
+}
+
+async function generateToken(): Promise<string> {
+  const header = { alg: 'HS256', typ: 'JWT' }
+  const now = Math.floor(Date.now() / 1000)
+  const payload = { iat: now, exp: now + 300, nbf: now - 5 }
+  const headerB64 = btoa(JSON.stringify(header)).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_')
+  const payloadB64 = btoa(JSON.stringify(payload)).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_')
+  const key = await importKey(TOKEN_SECRET)
+  const data = new TextEncoder().encode(`${headerB64}.${payloadB64}`)
+  const sig = await crypto.subtle.sign('HMAC', key, data)
+  const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(sig))).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_')
+  return `${headerB64}.${payloadB64}.${signatureB64}`
+}
+
 interface WasmExports {
   init(): void
   decrypt(len: number): number
@@ -168,10 +193,12 @@ async function loadData(showLoading = false) {
   error.value = ''
 
   try {
+    const token = await generateToken()
     const response = await fetch(AL, {
       cache: 'no-store',
       headers: {
         Accept: 'application/json',
+        Authorization: `Bearer ${token}`,
       },
     })
 
