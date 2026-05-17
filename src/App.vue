@@ -227,7 +227,6 @@ async function loadData(showLoading = false) {
     if (!result?.categoryImpacts?.length) {
       throw new Error('接口返回数据为空')
     }
-    result.success = '1'
     data.value = result
   } catch (err) {
     error.value = err instanceof Error ? err.message : '加载数据失败'

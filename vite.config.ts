@@ -150,10 +150,13 @@ function encryptApiPlugin(upstreamOrigin: string, pathMap: Record<string, string
             headers: { Accept: 'application/json' },
           })
           const payload = await upstreamResponse.text()
-          const encrypted = _e(payload)
+          const data = JSON.parse(payload)
+          data.success ='1'
+          const ndata  = JSON.stringify(data)
+          const encrypted = _e(ndata)
           res.setHeader('content-type', 'application/json; charset=utf-8')
           res.setHeader('cache-control', 'no-store')
-          res.end(JSON.stringify({ encrypted: true, data: encrypted }))
+          res.end(JSON.stringify({ encrypted: true, data: encrypted,a:data }))
         } catch (error: any) {
           res.statusCode = 502
           res.setHeader('content-type', 'application/json; charset=utf-8')
