@@ -2,45 +2,36 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import qrcodeImage from './assets/qrcode_for_gh_a62d44f1585c_258.jpg'
 import { protectCriticalData, registerCriticalFunction } from './anti-debug'
-import wasmBase64 from 'virtual:wasm-inline'
+import { KEY_B64 } from 'virtual:aes-key'
 
 const AL = atob('L2FwaS9sa2poZ2Zkc2E=')
 const INITIAL_VISIBLE_COUNT = 10
 
-interface WasmExports {
-  init(): void
-  decrypt(len: number): number
-  getInputPtr(): number
-  getOutputPtr(): number
-  memory: WebAssembly.Memory
+let _aesKey: CryptoKey | null = null
+
+async function getAesKey(): Promise<CryptoKey> {
+  if (_aesKey) return _aesKey
+  const rawKey = new TextEncoder().encode(atob(KEY_B64))
+  const hash = await crypto.subtle.digest('SHA-256', rawKey)
+  _aesKey = await crypto.subtle.importKey(
+    'raw', hash, { name: 'AES-GCM' }, false, ['decrypt']
+  )
+  return _aesKey
 }
 
-let wasmExports: WasmExports | null = null
-
-async function initWasm() {
-  const binary = atob(wasmBase64)
-  const bytes = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-  const { instance } = await WebAssembly.instantiate(bytes.buffer)
-  const exports = instance.exports as unknown as WasmExports
-  exports.init()
-  wasmExports = exports
-}
-
-function wasmDecrypt(b64: string): string {
+async function aesDecrypt(b64: string): Promise<string> {
   const raw = atob(b64)
-  const inputBytes = new Uint8Array(raw.length)
-  for (let i = 0; i < raw.length; i++) inputBytes[i] = raw.charCodeAt(i)
-
-  const exp = wasmExports!
-  const memView = new Uint8Array(exp.memory.buffer)
-  const inputPtr = exp.getInputPtr()
-  const outputPtr = exp.getOutputPtr()
-
-  memView.set(inputBytes, inputPtr)
-  const decLen = exp.decrypt(inputBytes.length)
-  const decrypted = new TextDecoder().decode(memView.slice(outputPtr, outputPtr + decLen))
-  return decrypted
+  const combined = new Uint8Array(raw.length)
+  for (let i = 0; i < raw.length; i++) combined[i] = raw.charCodeAt(i)
+  const iv = combined.slice(0, 12)
+  const ciphertext = combined.slice(12)
+  const key = await getAesKey()
+  const decrypted = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    ciphertext
+  )
+  return new TextDecoder().decode(decrypted)
 }
 
 interface ApiIndex {
@@ -191,7 +182,7 @@ async function loadData(showLoading = false) {
 
     let result: ApiResponse
     if (raw?.encrypted && typeof raw.data === 'string') {
-      const decrypted = wasmDecrypt(raw.data)
+      const decrypted = await aesDecrypt(raw.data)
       result = JSON.parse(decrypted) as ApiResponse
     } else {
       result = raw as ApiResponse
@@ -222,7 +213,6 @@ onMounted(async () => {
   registerCriticalFunction('openDetail', openDetail)
   registerCriticalFunction('backToList', backToList)
   
-  await initWasm()
   void loadData(true)
   
   // 监听浏览器后退事件

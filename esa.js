@@ -7,19 +7,32 @@ const CONFIG = {
   UPSTREAM_PATH: '/5gsilmu61dc8eae3',
 }
 
-const _K = new TextEncoder().encode(atob(KEY_B64))
+let _aesKey = null
 
-function _e(text) {
-  const tb = new TextEncoder().encode(text)
-  const iv = new Uint8Array(8)
-  for (let i = 0; i < 8; i++) iv[i] = (Math.random() * 256) | 0
-  const out = new Uint8Array(8 + tb.length)
-  out.set(iv)
-  for (let i = 0; i < tb.length; i++) {
-    out[8 + i] = tb[i] ^ _K[(i + iv[i % 8]) % _K.length]
-  }
+async function getAesKey() {
+  if (_aesKey) return _aesKey
+  const rawKey = new TextEncoder().encode(atob(KEY_B64))
+  const hash = await crypto.subtle.digest('SHA-256', rawKey)
+  _aesKey = await crypto.subtle.importKey(
+    'raw', hash, { name: 'AES-GCM' }, false, ['encrypt']
+  )
+  return _aesKey
+}
+
+async function _e(text) {
+  const key = await getAesKey()
+  const iv = crypto.getRandomValues(new Uint8Array(12))
+  const encoded = new TextEncoder().encode(text)
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    encoded
+  )
+  const combined = new Uint8Array(iv.length + ciphertext.byteLength)
+  combined.set(iv)
+  combined.set(new Uint8Array(ciphertext), iv.length)
   let s = ''
-  for (let i = 0; i < out.length; i++) s += String.fromCharCode(out[i])
+  for (let i = 0; i < combined.length; i++) s += String.fromCharCode(combined[i])
   return btoa(s)
 }
 
@@ -76,7 +89,7 @@ async function handleApiRequest(request) {
     }
 
     const payload = await upstreamResponse.text()
-    const encrypted = _e(payload)
+    const encrypted = await _e(payload)
     return jsonResponse(
       { encrypted: true, data: encrypted },
       {

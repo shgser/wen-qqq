@@ -1,45 +1,52 @@
 import { defineConfig, loadEnv, type Plugin } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import JavaScriptObfuscator from 'javascript-obfuscator'
-import { readFileSync, writeFileSync, existsSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { KEY_B64 } from './crypto-key.js'
 
-const VIRTUAL_MODULE_ID = 'virtual:wasm-inline'
-const RESOLVED_ID = '\0' + VIRTUAL_MODULE_ID
+const KEY_MODULE_ID = 'virtual:aes-key'
+const RESOLVED_KEY_ID = '\0' + KEY_MODULE_ID
 
-function wasmInlinePlugin(): Plugin {
+function keyInlinePlugin(): Plugin {
   return {
-    name: 'wasm-inline',
+    name: 'aes-key-inline',
     resolveId(id) {
-      if (id === VIRTUAL_MODULE_ID) return RESOLVED_ID
+      if (id === KEY_MODULE_ID) return RESOLVED_KEY_ID
     },
     load(id) {
-      if (id !== RESOLVED_ID) return null
-      const wasmPath = resolve(process.cwd(), 'wasm/decrypt.wasm')
-      if (!existsSync(wasmPath)) {
-        throw new Error('decrypt.wasm not found. Run "npm run build:wasm" first.')
-      }
-      const buf = readFileSync(wasmPath)
-      const b64 = buf.toString('base64')
-      return `export default "${b64}"`
+      if (id !== RESOLVED_KEY_ID) return null
+      return `export const KEY_B64 = "${KEY_B64}"`
     },
   }
 }
 
-const _K = new TextEncoder().encode(atob(KEY_B64))
+let _aesKey: CryptoKey | null = null
 
-function _e(text: string) {
-  const tb = new TextEncoder().encode(text)
-  const iv = new Uint8Array(8)
-  for (let i = 0; i < 8; i++) iv[i] = (Math.random() * 256) | 0
-  const out = new Uint8Array(8 + tb.length)
-  out.set(iv)
-  for (let i = 0; i < tb.length; i++) {
-    out[8 + i] = tb[i] ^ _K[(i + iv[i % 8]) % _K.length]
-  }
+async function getAesKey(): Promise<CryptoKey> {
+  if (_aesKey) return _aesKey
+  const rawKey = new TextEncoder().encode(atob(KEY_B64))
+  const hash = await crypto.subtle.digest('SHA-256', rawKey)
+  _aesKey = await crypto.subtle.importKey(
+    'raw', hash, { name: 'AES-GCM' }, false, ['encrypt']
+  )
+  return _aesKey
+}
+
+async function _e(text: string): Promise<string> {
+  const key = await getAesKey()
+  const iv = crypto.getRandomValues(new Uint8Array(12))
+  const encoded = new TextEncoder().encode(text)
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    encoded
+  )
+  const combined = new Uint8Array(iv.length + ciphertext.byteLength)
+  combined.set(iv)
+  combined.set(new Uint8Array(ciphertext), iv.length)
   let s = ''
-  for (let i = 0; i < out.length; i++) s += String.fromCharCode(out[i])
+  for (let i = 0; i < combined.length; i++) s += String.fromCharCode(combined[i])
   return btoa(s)
 }
 
@@ -99,7 +106,7 @@ function encryptApiPlugin(upstreamOrigin: string, pathMap: Record<string, string
             headers: { Accept: 'application/json' },
           })
           const payload = await upstreamResponse.text()
-          const encrypted = _e(payload)
+          const encrypted = await _e(payload)
           res.setHeader('content-type', 'application/json; charset=utf-8')
           res.setHeader('cache-control', 'no-store')
           res.end(JSON.stringify({ encrypted: true, data: encrypted }))
@@ -124,6 +131,6 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
-    plugins: [vue(), wasmInlinePlugin(), encryptApiPlugin(upstreamOrigin, PATH_MAP), obfuscatorPlugin()],
+    plugins: [vue(), keyInlinePlugin(), encryptApiPlugin(upstreamOrigin, PATH_MAP), obfuscatorPlugin()],
   }
 })
