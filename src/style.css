@@ -148,6 +148,7 @@ button {
   font-size: 16px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  /* font-family: monospace; */
 }
 
 .detail-header {

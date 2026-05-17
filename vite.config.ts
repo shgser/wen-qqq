@@ -3,7 +3,10 @@ import vue from '@vitejs/plugin-vue'
 import JavaScriptObfuscator from 'javascript-obfuscator'
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { webcrypto } from 'node:crypto'
 import { KEY_B64 } from './crypto-key.js'
+
+const { subtle } = webcrypto
 
 const VIRTUAL_MODULE_ID = 'virtual:wasm-inline'
 const RESOLVED_ID = '\0' + VIRTUAL_MODULE_ID
@@ -29,17 +32,24 @@ function wasmInlinePlugin(): Plugin {
 
 const _K = new TextEncoder().encode(atob(KEY_B64))
 
-function _e(text: string) {
-  const tb = new TextEncoder().encode(text)
-  const iv = new Uint8Array(8)
-  for (let i = 0; i < 8; i++) iv[i] = (Math.random() * 256) | 0
-  const out = new Uint8Array(8 + tb.length)
-  out.set(iv)
-  for (let i = 0; i < tb.length; i++) {
-    out[8 + i] = tb[i] ^ _K[(i + iv[i % 8]) % _K.length]
-  }
+const aesKeyPromise = (async () => {
+  const hash = await subtle.digest('SHA-256', _K)
+  return subtle.importKey('raw', hash, 'AES-GCM', false, ['encrypt'])
+})()
+
+async function _e(text: string) {
+  const aesKey = await aesKeyPromise
+  const iv = webcrypto.getRandomValues(new Uint8Array(12))
+  const encrypted = await subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    aesKey,
+    new TextEncoder().encode(text),
+  )
+  const result = new Uint8Array(12 + encrypted.byteLength)
+  result.set(iv, 0)
+  result.set(new Uint8Array(encrypted), 12)
   let s = ''
-  for (let i = 0; i < out.length; i++) s += String.fromCharCode(out[i])
+  for (let i = 0; i < result.length; i++) s += String.fromCharCode(result[i])
   return btoa(s)
 }
 
@@ -99,7 +109,7 @@ function encryptApiPlugin(upstreamOrigin: string, pathMap: Record<string, string
             headers: { Accept: 'application/json' },
           })
           const payload = await upstreamResponse.text()
-          const encrypted = _e(payload)
+          const encrypted = await _e(payload)
           res.setHeader('content-type', 'application/json; charset=utf-8')
           res.setHeader('cache-control', 'no-store')
           res.end(JSON.stringify({ encrypted: true, data: encrypted }))

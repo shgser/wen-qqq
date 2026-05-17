@@ -9,13 +9,13 @@ const INITIAL_VISIBLE_COUNT = 10
 
 interface WasmExports {
   init(): void
-  decrypt(len: number): number
-  getInputPtr(): number
-  getOutputPtr(): number
+  getKeyPtr(): number
+  getKeyLen(): number
   memory: WebAssembly.Memory
 }
 
 let wasmExports: WasmExports | null = null
+let cachedAesKey: CryptoKey | null = null
 
 async function initWasm() {
   const binary = atob(wasmBase64)
@@ -27,20 +27,35 @@ async function initWasm() {
   wasmExports = exports
 }
 
-function wasmDecrypt(b64: string): string {
-  const raw = atob(b64)
-  const inputBytes = new Uint8Array(raw.length)
-  for (let i = 0; i < raw.length; i++) inputBytes[i] = raw.charCodeAt(i)
+async function getAesKey(): Promise<CryptoKey> {
+  if (cachedAesKey) return cachedAesKey
 
   const exp = wasmExports!
   const memView = new Uint8Array(exp.memory.buffer)
-  const inputPtr = exp.getInputPtr()
-  const outputPtr = exp.getOutputPtr()
+  const keyPtr = exp.getKeyPtr()
+  const keyLen = exp.getKeyLen()
+  const keyBytes = memView.slice(keyPtr, keyPtr + keyLen)
 
-  memView.set(inputBytes, inputPtr)
-  const decLen = exp.decrypt(inputBytes.length)
-  const decrypted = new TextDecoder().decode(memView.slice(outputPtr, outputPtr + decLen))
-  return decrypted
+  const hash = await crypto.subtle.digest('SHA-256', keyBytes)
+  cachedAesKey = await crypto.subtle.importKey('raw', hash, 'AES-GCM', false, ['decrypt'])
+  return cachedAesKey
+}
+
+async function aesDecrypt(b64: string): Promise<string> {
+  const raw = atob(b64)
+  const bytes = new Uint8Array(raw.length)
+  for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i)
+
+  const iv = bytes.slice(0, 12)
+  const ciphertext = bytes.slice(12)
+
+  const aesKey = await getAesKey()
+  const decrypted = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv },
+    aesKey,
+    ciphertext,
+  )
+  return new TextDecoder().decode(decrypted)
 }
 
 interface ApiIndex {
@@ -191,7 +206,7 @@ async function loadData(showLoading = false) {
 
     let result: ApiResponse
     if (raw?.encrypted && typeof raw.data === 'string') {
-      const decrypted = wasmDecrypt(raw.data)
+      const decrypted = await aesDecrypt(raw.data)
       result = JSON.parse(decrypted) as ApiResponse
     } else {
       result = raw as ApiResponse
