@@ -1,8 +1,8 @@
 import { createApp } from 'vue'
 import './style.css'
 import App from './App.vue'
-// import { initAntiDebug } from './anti-debug'
+import { initAntiDebug } from './anti-debug'
 
-// initAntiDebug()
+initAntiDebug()
 
 createApp(App).mount('#app')
