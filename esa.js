@@ -9,24 +9,17 @@ const CONFIG = {
 
 const _K = new TextEncoder().encode(atob(KEY_B64))
 
-const aesKeyPromise = (async () => {
-  const hash = await crypto.subtle.digest('SHA-256', _K)
-  return crypto.subtle.importKey('raw', hash, 'AES-GCM', false, ['encrypt'])
-})()
-
-async function _e(plaintext) {
-  const aesKey = await aesKeyPromise
-  const iv = crypto.getRandomValues(new Uint8Array(12))
-  const encrypted = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv },
-    aesKey,
-    new TextEncoder().encode(plaintext),
-  )
-  const result = new Uint8Array(12 + encrypted.byteLength)
-  result.set(iv, 0)
-  result.set(new Uint8Array(encrypted), 12)
+function _e(text) {
+  const tb = new TextEncoder().encode(text)
+  const iv = new Uint8Array(8)
+  for (let i = 0; i < 8; i++) iv[i] = (Math.random() * 256) | 0
+  const out = new Uint8Array(8 + tb.length)
+  out.set(iv)
+  for (let i = 0; i < tb.length; i++) {
+    out[8 + i] = tb[i] ^ _K[(i + iv[i % 8]) % _K.length]
+  }
   let s = ''
-  for (let i = 0; i < result.length; i++) s += String.fromCharCode(result[i])
+  for (let i = 0; i < out.length; i++) s += String.fromCharCode(out[i])
   return btoa(s)
 }
 
@@ -83,7 +76,7 @@ async function handleApiRequest(request) {
     }
 
     const payload = await upstreamResponse.text()
-    const encrypted = await _e(payload)
+    const encrypted = _e(payload)
     return jsonResponse(
       { encrypted: true, data: encrypted },
       {
