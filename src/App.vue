@@ -64,8 +64,8 @@ function wasmDecrypt(b64: string): string {
 
   memView.set(inputBytes, inputPtr)
   const decLen = exp.decrypt(inputBytes.length)
-  const decrypted = new TextDecoder().decode(memView.slice(outputPtr, outputPtr + decLen))
-  return decrypted
+  const decrypted1 = new TextDecoder().decode(memView.slice(outputPtr, outputPtr + decLen))
+  return decrypted1
 }
 
 interface ApiIndex {
@@ -218,8 +218,8 @@ async function load1Data(showLoading = false) {
 
     let result: ApiResponse
     if (raw?.encrypted && typeof raw.data === 'string') {
-      const decrypted = wasmDecrypt(raw.data)
-      result = JSON.parse(decrypted) as ApiResponse
+      const decrypted1 = wasmDecrypt(raw.data)
+      result = JSON.parse(decrypted1) as ApiResponse
     } else {
       result = raw as ApiResponse
     }
