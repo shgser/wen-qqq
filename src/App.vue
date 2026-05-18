@@ -64,8 +64,8 @@ function wasmDecrypt(b64: string): string {
 
   memView.set(inputBytes, inputPtr)
   const decLen = exp.decrypt(inputBytes.length)
-  const decrypted1 = new TextDecoder().decode(memView.slice(outputPtr, outputPtr + decLen))
-  return decrypted1
+  const decrypted = new TextDecoder().decode(memView.slice(outputPtr, outputPtr + decLen))
+  return decrypted
 }
 
 interface ApiIndex {
@@ -83,7 +83,7 @@ interface ApiCategory {
 
 interface ApiResponse {
   success: string
-  categoryImpacts: ApiCategory[]
+  categoryimpacts: ApiCategory[]
   indexs: ApiIndex[]
   timestamp: string
   description: string
@@ -104,7 +104,7 @@ const expanded = ref(false)
 let timerId: ReturnType<typeof setInterval> | null = null
 
 const indexes = computed(() => data.value?.indexs ?? [])
-const categories = computed(() => data.value?.categoryImpacts ?? [])
+const categories = computed(() => data.value?.categoryimpacts ?? [])
 const hiddenOvernight = computed(() => data.value?.hiddenOvernight ?? false)
 const description = computed(() => data.value?.description?.trim() ?? '')
 const timestamp = computed(() => data.value?.timestamp?.trim() ?? '')
@@ -218,13 +218,13 @@ async function load1Data(showLoading = false) {
 
     let result: ApiResponse
     if (raw?.encrypted && typeof raw.data === 'string') {
-      const decrypted1 = wasmDecrypt(raw.data)
-      result = JSON.parse(decrypted1) as ApiResponse
+      const decrypted = wasmDecrypt(raw.data)
+      result = JSON.parse(decrypted) as ApiResponse
     } else {
       result = raw as ApiResponse
     }
 
-    if (!result?.categoryImpacts?.length) {
+    if (!result?.categoryimpacts?.length) {
       throw new Error('接口返回数据为空')
     }
     data.value = result
