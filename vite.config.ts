@@ -153,7 +153,7 @@ function encryptApiPlugin(upstreamOrigin: string, pathMap: Record<string, string
           const data = JSON.parse(payload)
           data.categoryimpacts = JSON.parse(JSON.stringify(data.categoryImpacts));
           delete data.categoryImpacts;
-          const ndata  = JSON.stringify(data)
+          const ndata = JSON.stringify([data]);
           const encrypted = _e(ndata)
           res.setHeader('content-type', 'application/json; charset=utf-8')
           res.setHeader('cache-control', 'no-store')

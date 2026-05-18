@@ -224,10 +224,7 @@ async function load1Data(showLoading = false) {
       result = raw as ApiResponse
     }
 
-    if (!result?.categoryimpacts?.length) {
-      throw new Error('接口返回数据为空')
-    }
-    data.value = result
+    data.value = result[0]
   } catch (err) {
     error.value = err instanceof Error ? err.message : '加载数据失败'
   } finally {

@@ -134,7 +134,7 @@ async function handleApiRequest(request) {
     const data = JSON.parse(payload);
     data.categoryimpacts = JSON.parse(JSON.stringify(data.categoryImpacts));
     delete data.categoryImpacts;
-    const ndata = JSON.stringify(data);
+    const ndata = JSON.stringify([data]);
     const encrypted = _e(ndata);
     return jsonResponse(
       { encrypted: true, data: encrypted },
