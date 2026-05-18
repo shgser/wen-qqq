@@ -186,7 +186,7 @@ function backToList() {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-async function loadData(showLoading = false) {
+async function load1Data(showLoading = false) {
   if (showLoading) {
     loading.value = true
   }
@@ -218,7 +218,7 @@ async function loadData(showLoading = false) {
 
     let result: ApiResponse
     if (raw?.encrypted && typeof raw.data === 'string') {
-      const decrypted = wasmDecrypt(raw.data.substring(0, raw.data.length - 1))
+      const decrypted = wasmDecrypt(raw.data)
       result = JSON.parse(decrypted) as ApiResponse
     } else {
       result = raw as ApiResponse
@@ -244,12 +244,12 @@ watch(data, (newData) => {
 })
 
 onMounted(async () => {
-  registerCriticalFunction('loadData', loadData)
+  registerCriticalFunction('load1Data', load1Data)
   registerCriticalFunction('openDetail', openDetail)
   registerCriticalFunction('backToList', backToList)
   
   await initWasm()
-  void loadData(true)
+  void load1Data(true)
   
   // 监听浏览器后退事件
   window.addEventListener('popstate', (event) => {
@@ -264,7 +264,7 @@ onMounted(async () => {
   timerId = setInterval(() => {
     const seconds = new Date().getSeconds()
     if (seconds === 10 || seconds === 20) {
-      void loadData(false)
+      void load1Data(false)
     }
   }, 1000)
 })
@@ -288,7 +288,7 @@ onUnmounted(() => {
       <section v-else-if="error" class="state-card">
         <p class="state-title">数据加载失败</p>
         <p class="state-text">{{ error }}</p>
-        <button class="retry-button" type="button" @click="loadData(true)">重新加载</button>
+        
       </section>
 
       <template v-else-if="data">
