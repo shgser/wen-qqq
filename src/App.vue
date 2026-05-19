@@ -334,7 +334,7 @@ onUnmounted(() => {
               <img :src="qrcodeImage" class="qrcode-image" alt="二维码" />
               <a v-show="!hiddenOvernight" href="http://web1.345569.xyz/" rel="noopener noreferrer" class="visit-link">美股24h</a>
             </div>
-            <p class="qrcode-text">扫码关注公众号</p>
+            <p class="qrcode-text">公众号：纳指估值，有假冒的，谨防上当受骗</p>
           </section>
         </section>
 
@@ -423,7 +423,7 @@ onUnmounted(() => {
   width: 100%;
   margin: 0;
   font-size: 0.875rem;
-  color: #666;
+  color: #ff4d4f;
   text-align: left;
 }
 </style>
