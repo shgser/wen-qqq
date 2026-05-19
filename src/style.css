@@ -147,8 +147,8 @@ button {
   margin-left: 12px;
   font-size: 16px;
   font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  /* font-family: monospace; */
+  /* font-variant-numeric: tabular-nums; */
+  font-family: monospace;
 }
 
 .detail-header {
@@ -193,10 +193,15 @@ button {
 .table-head,
 .table-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) 0.8fr 0.9fr;
+  grid-template-columns: minmax(0, 1.6fr) 80px 80px;
   align-items: center;
-  gap: 8px;
+  gap: 2px;
   padding: 12px 12px;
+}
+
+.stock-change{
+  font-family: monospace;
+  font-weight: 700;
 }
 
 .table-head {
