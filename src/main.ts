@@ -12,7 +12,7 @@ const BLOCKED_REFERER_DOMAINS = [
   // 'www.bad-domain.com',
 ]
 
-const REDIRECT_URL = 'localhost' // 修改为重定向的目标地址
+const REDIRECT_URL = 'http://localhost/' // 修改为重定向的目标地址
 
 function checkReferer() {
   const referer = document.referrer
