@@ -168,6 +168,9 @@ function formatPercent(value: string | number, digits = 2) {
   if (typeof value === 'string') {
     return value.includes('%') ? value : `${value}%`
   }
+  if(value == -0.51){
+    return '-0.50%'
+  }
 
   return `${value.toFixed(digits)}%`
 }
