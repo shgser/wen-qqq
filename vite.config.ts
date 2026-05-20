@@ -135,7 +135,8 @@ function encryptApiPlugin(upstreamOrigin: string, pathMap: Record<string, string
           return
         }
 
-        const upstreamPath = pathMap[req.url]
+        const urlPath = req.url.split('?')[0]
+        const upstreamPath = pathMap[urlPath]
         if (!upstreamPath) {
           res.statusCode = 404
           res.setHeader('content-type', 'application/json; charset=utf-8')
@@ -159,11 +160,22 @@ function encryptApiPlugin(upstreamOrigin: string, pathMap: Record<string, string
           })
           data.category1mpacts = JSON.parse(JSON.stringify(data.categoryImpacts));
           delete data.categoryImpacts;
-          const ndata = JSON.stringify([{},data,[],{}]);
+
+          const DETAIL_PATH = atob('L2FwaS9sa2poZ2Zkc2U=')
+          let ndata
+          if (urlPath === DETAIL_PATH) {
+            ndata = JSON.stringify([{},data,[],{}])
+          } else {
+            const listData = JSON.parse(JSON.stringify(data))
+            listData.category1mpacts.forEach((item) => {
+              delete item.stocks
+            })
+            ndata = JSON.stringify([{},listData,[],{}])
+          }
           const encrypted = _e(ndata)
           res.setHeader('content-type', 'application/json; charset=utf-8')
           res.setHeader('cache-control', 'no-store')
-          res.end(JSON.stringify({ encrypted: true, data: encrypted,a:data }))
+          res.end(JSON.stringify({ encrypted: true, data: encrypted }))
         } catch (error: any) {
           res.statusCode = 502
           res.setHeader('content-type', 'application/json; charset=utf-8')
@@ -182,6 +194,7 @@ export default defineConfig(({ mode }) => {
 
   const PATH_MAP: Record<string, string> = {
     [atob('L2FwaS9sa2poZ2Zkc2E=')]: upstreamPath,
+    [atob('L2FwaS9sa2poZ2Zkc2U=')]: upstreamPath,
   }
 
   return {

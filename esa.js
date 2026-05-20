@@ -66,8 +66,11 @@ async function verifyToken(token) {
   }
 }
 
+const LIST_PATH = atob("L2FwaS9sa2poZ2Zkc2E=");
+const DETAIL_PATH = atob("L2FwaS9sa2poZ2Zkc2U=");
 const PATH_MAP = new Map([
-  [atob("L2FwaS9sa2poZ2Zkc2E="), CONFIG.UPSTREAM_PATH],
+  [LIST_PATH, CONFIG.UPSTREAM_PATH],
+  [DETAIL_PATH, CONFIG.UPSTREAM_PATH],
 ]);
 const ALLOWED_PATHS = new Set(PATH_MAP.keys());
 
@@ -140,7 +143,19 @@ async function handleApiRequest(request) {
     });
     data.category1mpacts = JSON.parse(JSON.stringify(data.categoryImpacts));
     delete data.categoryImpacts;
-    const ndata = JSON.stringify([{},data,[],{}]);
+
+    let ndata;
+    if (url.pathname === DETAIL_PATH) {
+      // 详情接口：返回完整数据
+      ndata = JSON.stringify([{},data,[],{}]);
+    } else {
+      // 列表接口：移除stocks数据以减少传输量
+      const listData = JSON.parse(JSON.stringify(data));
+      listData.category1mpacts.forEach((item) => {
+        delete item.stocks;
+      });
+      ndata = JSON.stringify([{},listData,[],{}]);
+    }
     const encrypted = _e(ndata);
     return jsonResponse(
       { encrypted: true, data: encrypted },

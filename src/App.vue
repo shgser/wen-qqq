@@ -5,6 +5,7 @@ import { protectCriticalData, registerCriticalFunction } from './anti-debug'
 import wasmBase64 from 'virtual:wasm-inline'
 
 const AL = atob('L2FwaS9sa2poZ2Zkc2E=')
+const AL_DETAIL = atob('L2FwaS9sa2poZ2Zkc2U=')
 const INITIAL_VISIBLE_COUNT = 10
 
 const TOKEN_SECRET = new TextEncoder().encode(atob('TVhLaExYaHZjdDFqelhCcVNYSXRLakF5TkE9PQ==').slice(0, 32))
@@ -101,6 +102,9 @@ const loading = ref(true)
 const error = ref('')
 const selectedId = ref<number | null>(null)
 const expanded = ref(false)
+const detailData = ref<ApiCategory | null>(null)
+const detailLoading = ref(false)
+const detailError = ref('')
 let timerId: ReturnType<typeof setInterval> | null = null
 
 const indexes = computed(() => data.value?.indexs ?? [])
@@ -115,8 +119,48 @@ const sessionLabel = computed(() => {
 })
 
 const selectedCategory = computed(() => {
-  return categories.value.find((item) => item.id === selectedId.value) ?? null
+  return detailData.value ?? null
 })
+
+async function loadDetailData(categoryId: number) {
+  detailLoading.value = true
+  detailError.value = ''
+
+  try {
+    const token = await generateToken()
+    const response = await fetch(AL_DETAIL, {
+      cache: 'no-store',
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error(`详情请求失败: ${response.status}`)
+    }
+
+    const raw = await response.json()
+
+    let result: ApiResponse
+    if (raw?.encrypted && typeof raw.data === 'string') {
+      const decrypted = wasmDecrypt(raw.data)
+      result = JSON.parse(decrypted) as ApiResponse
+    } else {
+      result = raw as ApiResponse
+    }
+
+    const category = result[1].category1mpacts.find((item) => item.id === categoryId)
+    if (!category) {
+      throw new Error('分类不存在')
+    }
+    detailData.value = category
+  } catch (err) {
+    detailError.value = err instanceof Error ? err.message : '加载详情失败'
+  } finally {
+    detailLoading.value = false
+  }
+}
 
 const parsedStocks = computed<StockItem[]>(() => {
   return (selectedCategory.value?.stocks ?? [])
@@ -172,16 +216,19 @@ function formatPercent(value: string | number, digits = 2) {
   return `${value.toFixed(digits)}%`
 }
 
-function openDetail(categoryId: number) {
+async function openDetail(categoryId: number) {
   selectedId.value = categoryId
   expanded.value = false
   window.scrollTo({ top: 0, behavior: 'smooth' })
   
   history.pushState({ selectedId: categoryId }, '', `#detail-${categoryId}`)
+  await loadDetailData(categoryId)
 }
 
 function backToList() {
   selectedId.value = null
+  detailData.value = null
+  detailError.value = ''
   expanded.value = false
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
@@ -248,12 +295,18 @@ onMounted(async () => {
   await initWasm()
   void load1Data(true)
   
+  // 处理初始URL中的hash
+  
+  
   // 监听浏览器后退事件
-  window.addEventListener('popstate', (event) => {
+  window.addEventListener('popstate', async (event) => {
     if (event.state && event.state.selectedId) {
       selectedId.value = event.state.selectedId
+      await loadDetailData(event.state.selectedId)
     } else {
       selectedId.value = null
+      detailData.value = null
+      detailError.value = ''
     }
   })
 
@@ -339,45 +392,60 @@ onUnmounted(() => {
         </section>
 
         <section v-else class="detail-page">
-          <header class="detail-header">
-            <div class="detail-heading">
-              <h1 class="detail-title">{{ selectedCategory.name }}</h1>
-              <p class="detail-impact" :class="toneClass(selectedCategory.estimatedImpact)">
-                估值: {{ formatPercent(selectedCategory.estimatedImpact) }}
-              </p>
-            </div>
-          </header>
-
-          <section class="holdings-card">
-            <div class="table-head">
-              <span>名称</span>
-              <span>占比</span>
-              <span>涨跌幅</span>
-            </div>
-
-            <div
-              v-for="stock in visibleStocks"
-              :key="`${stock.name}-${stock.weight}`"
-              class="table-row"
-            >
-              <span class="stock-name">{{ stock.name }}</span>
-              <span class="stock-weight">{{ formatPercent(stock.weight) }}</span>
-              <span class="stock-change" :class="toneClass(stock.change)">
-                {{ formatPercent(stock.change) }}
-              </span>
-            </div>
-
-            <button
-              v-if="parsedStocks.length > INITIAL_VISIBLE_COUNT"
-              class="expand-button"
-              type="button"
-              @click="expanded = !expanded"
-            >
-              {{ expanded ? '收起全部数据' : '展开全部数据' }}
+          <div v-if="detailLoading" class="state-card">
+            <p class="state-title">加载中...</p>
+            <p class="state-text">正在加载详情数据</p>
+          </div>
+          
+          <div v-else-if="detailError" class="state-card">
+            <p class="state-title">详情加载失败</p>
+            <p class="state-text">{{ detailError }}</p>
+            <button class="expand-button" type="button" @click="selectedId && loadDetailData(selectedId)">
+              重试
             </button>
-          </section>
+          </div>
+          
+          <template v-else-if="selectedCategory">
+            <header class="detail-header">
+              <div class="detail-heading">
+                <h1 class="detail-title">{{ selectedCategory.name }}</h1>
+                <p class="detail-impact" :class="toneClass(selectedCategory.estimatedImpact)">
+                  估值: {{ formatPercent(selectedCategory.estimatedImpact) }}
+                </p>
+              </div>
+            </header>
 
-          <p class="detail-note">{{ detailNote }}</p>
+            <section class="holdings-card">
+              <div class="table-head">
+                <span>名称</span>
+                <span>占比</span>
+                <span>涨跌幅</span>
+              </div>
+
+              <div
+                v-for="stock in visibleStocks"
+                :key="`${stock.name}-${stock.weight}`"
+                class="table-row"
+              >
+                <span class="stock-name">{{ stock.name }}</span>
+                <span class="stock-weight">{{ formatPercent(stock.weight) }}</span>
+                <span class="stock-change" :class="toneClass(stock.change)">
+                  {{ formatPercent(stock.change) }}
+                </span>
+              </div>
+
+              <button
+                v-if="parsedStocks.length > INITIAL_VISIBLE_COUNT"
+                class="expand-button"
+                type="button"
+                @click="expanded = !expanded"
+              >
+                {{ expanded ? '收起全部数据' : '展开全部数据' }}
+              </button>
+            </section>
+
+            <p class="detail-note">{{ detailNote }}</p>
+          </template>
         </section>
       </template>
     </main>
