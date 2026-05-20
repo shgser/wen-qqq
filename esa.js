@@ -146,8 +146,17 @@ async function handleApiRequest(request) {
 
     let ndata;
     if (url.pathname === DETAIL_PATH) {
-      // 详情接口：返回完整数据
-      ndata = JSON.stringify([{},data,[],{}]);
+      // 详情接口：只返回当前分类数据
+      const categoryId = parseInt(url.searchParams.get('id') || '0');
+      const category = data.category1mpacts.find((item) => item.id === categoryId);
+      if (category) {
+        ndata = JSON.stringify([{},category,[],{}]);
+      } else {
+        return jsonResponse(
+          { message: '分类不存在' },
+          { status: 404 },
+        );
+      }
     } else {
       // 列表接口：移除stocks数据以减少传输量
       const listData = JSON.parse(JSON.stringify(data));

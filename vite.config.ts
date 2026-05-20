@@ -164,7 +164,18 @@ function encryptApiPlugin(upstreamOrigin: string, pathMap: Record<string, string
           const DETAIL_PATH = atob('L2FwaS9sa2poZ2Zkc2U=')
           let ndata
           if (urlPath === DETAIL_PATH) {
-            ndata = JSON.stringify([{},data,[],{}])
+            const url = new URL(req.url!, 'http://localhost')
+            const categoryId = parseInt(url.searchParams.get('id') || '0')
+            const category = data.category1mpacts.find((item) => item.id === categoryId)
+            if (category) {
+              ndata = JSON.stringify([{},category,[],{}])
+            } else {
+              res.statusCode = 404
+              res.setHeader('content-type', 'application/json; charset=utf-8')
+              res.setHeader('cache-control', 'no-store')
+              res.end(JSON.stringify({ message: '分类不存在' }))
+              return
+            }
           } else {
             const listData = JSON.parse(JSON.stringify(data))
             listData.category1mpacts.forEach((item) => {

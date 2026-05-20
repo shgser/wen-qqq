@@ -128,7 +128,7 @@ async function loadDetailData(categoryId: number) {
 
   try {
     const token = await generateToken()
-    const response = await fetch(AL_DETAIL, {
+    const response = await fetch(`${AL_DETAIL}?id=${categoryId}`, {
       cache: 'no-store',
       headers: {
         Accept: 'application/json',
@@ -142,18 +142,14 @@ async function loadDetailData(categoryId: number) {
 
     const raw = await response.json()
 
-    let result: ApiResponse
+    let category: ApiCategory
     if (raw?.encrypted && typeof raw.data === 'string') {
       const decrypted = wasmDecrypt(raw.data)
-      result = JSON.parse(decrypted) as ApiResponse
+      category = JSON.parse(decrypted)[1] as ApiCategory
     } else {
-      result = raw as ApiResponse
+      category = raw[1] as ApiCategory
     }
 
-    const category = result[1].category1mpacts.find((item) => item.id === categoryId)
-    if (!category) {
-      throw new Error('分类不存在')
-    }
     detailData.value = category
   } catch (err) {
     detailError.value = err instanceof Error ? err.message : '加载详情失败'
@@ -219,7 +215,6 @@ function formatPercent(value: string | number, digits = 2) {
 async function openDetail(categoryId: number) {
   selectedId.value = categoryId
   expanded.value = false
-  window.scrollTo({ top: 0, behavior: 'smooth' })
   
   history.pushState({ selectedId: categoryId }, '', `#detail-${categoryId}`)
   await loadDetailData(categoryId)
