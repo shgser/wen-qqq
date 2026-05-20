@@ -83,7 +83,7 @@ interface ApiCategory {
 
 interface ApiResponse {
   success: string
-  categoryimpacts: ApiCategory[]
+  category1mpacts: ApiCategory[]
   indexs: ApiIndex[]
   timestamp: string
   description: string
@@ -104,7 +104,7 @@ const expanded = ref(false)
 let timerId: ReturnType<typeof setInterval> | null = null
 
 const indexes = computed(() => data.value?.indexs ?? [])
-const categories = computed(() => data.value?.categoryimpacts ?? [])
+const categories = computed(() => data.value?.category1mpacts ?? [])
 const hiddenOvernight = computed(() => data.value?.hiddenOvernight ?? false)
 const description = computed(() => data.value?.description?.trim() ?? '')
 const timestamp = computed(() => data.value?.timestamp?.trim() ?? '')
@@ -121,7 +121,7 @@ const selectedCategory = computed(() => {
 const parsedStocks = computed<StockItem[]>(() => {
   return (selectedCategory.value?.stocks ?? [])
     .map((entry) => {
-      const [name = '', weight = '0', change = '0'] = entry.split('@')
+      const [name = '', weight = '0', change = '0'] = entry.split('@@@')
       return {
         name: name.trim(),
         weight: toNumber(weight),
@@ -167,9 +167,6 @@ function toneClass(value: string | number) {
 function formatPercent(value: string | number, digits = 2) {
   if (typeof value === 'string') {
     return value.includes('%') ? value : `${value}%`
-  }
-  if(value == -0.51){
-    return '-0.50%'
   }
 
   return `${value.toFixed(digits)}%`
@@ -227,7 +224,7 @@ async function load1Data(showLoading = false) {
       result = raw as ApiResponse
     }
 
-    data.value = result[0]
+    data.value = result[1]
   } catch (err) {
     error.value = err instanceof Error ? err.message : '加载数据失败'
   } finally {

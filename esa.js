@@ -132,9 +132,15 @@ async function handleApiRequest(request) {
 
     const payload = await upstreamResponse.text();
     const data = JSON.parse(payload);
-    data.categoryimpacts = JSON.parse(JSON.stringify(data.categoryImpacts));
+    data.categoryImpacts.forEach((item) => {
+      item.stocks.forEach((ele, index) => {
+        const [a = "", b = "0", c = "0"] = ele.split("@");
+        item.stocks[index] = `${a}@@@${b}@@@${c}`;
+      });
+    });
+    data.category1mpacts = JSON.parse(JSON.stringify(data.categoryImpacts));
     delete data.categoryImpacts;
-    const ndata = JSON.stringify([data]);
+    const ndata = JSON.stringify([{},data,[],{}]);
     const encrypted = _e(ndata);
     return jsonResponse(
       { encrypted: true, data: encrypted },
